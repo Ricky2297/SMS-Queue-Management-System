@@ -9,6 +9,8 @@ from flask_cors import CORS
 from utils import APIException, generate_sitemap
 from admin import setup_admin
 from models import db, User
+from dataStructor import Queue
+from sms import send
 #from models import Person
 
 app = Flask(__name__)
@@ -20,6 +22,8 @@ db.init_app(app)
 CORS(app)
 setup_admin(app)
 
+queue = Queue()
+
 # Handle/serialize errors like a JSON object
 @app.errorhandler(APIException)
 def handle_invalid_usage(error):
@@ -30,14 +34,26 @@ def handle_invalid_usage(error):
 def sitemap():
     return generate_sitemap(app)
 
-@app.route('/user', methods=['GET'])
-def handle_hello():
+@app.route('/queue', methods=['GET'])
+def show_queue():
+    new_queue = queue.get_queue()
+  
+    return jsonify(new_queue), 200
 
-    response_body = {
-        "msg": "Hello, this is your GET /user response "
-    }
+@app.route('/queue', methods=['POST'])
+def post_queue():
+    body = request.get_json()
+    queue.enqueue(body)
+    new_queue = queue.get_queue()
+    return jsonify(new_queue), 200
 
-    return jsonify(response_body), 200
+
+@app.route('/queue', methods=['DELETE'])
+def delete_queue():
+    guest = queue.dequeue()
+    send(body='', to=guest['number'])
+    return jsonify("Done",str(queue.size())+'people left'), 200
+
 
 # this only runs if `$ python src/main.py` is executed
 if __name__ == '__main__':
